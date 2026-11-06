@@ -1,0 +1,33 @@
+#include <windows.h>
+
+#define FILE_VERSION 1, 0, 1, 0
+#define FILE_VERSION_STRING "1.0.1.0"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION FILE_VERSION
+PRODUCTVERSION FILE_VERSION
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+FILEFLAGS 0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+FILESUBTYPE 0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "Howon Lee"
+            VALUE "FileDescription", "Keeps Chrome windows always on top on kiosk PCs"
+            VALUE "FileVersion", FILE_VERSION_STRING
+            VALUE "InternalName", "ChromeAlwaysOnTop"
+            VALUE "LegalCopyright", "Copyright (c) 2026 Howon Lee"
+            VALUE "OriginalFilename", "ChromeAlwaysOnTop.exe"
+            VALUE "ProductName", "ChromeAlwaysOnTop"
+            VALUE "ProductVersion", FILE_VERSION_STRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

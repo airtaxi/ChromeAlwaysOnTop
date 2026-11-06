@@ -9,8 +9,8 @@
 
 ## 특징
 
-- 설치 과정이 없고, 별도의 런타임도 필요하지 않습니다. Windows에 기본으로 들어 있는 `kernel32.dll`, `user32.dll`, `advapi32.dll`만 사용합니다.
-- 실행 파일의 크기는 2.5KB 정도입니다.
+- 설치 과정이 없고, 별도의 런타임도 필요하지 않습니다. C 런타임은 실행 파일 안에 정적으로 포함되며, 나머지는 Windows에 기본으로 들어 있는 DLL만 사용합니다.
+- 실행 파일의 크기는 13KB 정도입니다.
 - 창, 트레이 아이콘, 콘솔을 띄우지 않습니다.
 - 실행하는 즉시 로그인할 때 자동으로 실행되도록 등록됩니다.
 - 이미 항상 위로 설정된 창은 건너뛰므로, 주기를 짧게 잡아도 CPU를 거의 사용하지 않습니다.
@@ -60,7 +60,7 @@ reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v ChromeAlwaysO
 3. 최상위 창을 모두 열거해서, 화면에 보이면서 아직 항상 위가 아닌 창을 고릅니다.
 4. 고른 창을 소유한 프로세스의 실행 파일 이름이 `chrome.exe`인지 대소문자를 구분하지 않고 확인합니다. 같은 창 클래스를 쓰는 Edge, Visual Studio Code 같은 프로그램은 이 단계에서 제외됩니다.
 5. 조건에 맞는 창을 포커스를 빼앗지 않는 방식으로 항상 위로 설정합니다. 응답하지 않는 창 때문에 검사가 멈추지 않도록 비동기로 요청합니다.
-6. 지정한 주기만큼 기다린 뒤 3단계부터 반복하고, 기다리는 도중에 종료 신호를 받으면 바로 종료합니다.
+6. 화면에 보이지 않는 메시지 창의 타이머로 지정한 주기마다 3단계부터 반복합니다. 종료 신호를 받으면 이 창을 닫아 프로그램을 끝냅니다.
 
 ## 제한 사항
 
@@ -68,17 +68,17 @@ reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v ChromeAlwaysO
 - 팝업과 보조 창을 포함해서 화면에 보이는 Chrome 창을 모두 항상 위로 설정합니다. Chrome 창끼리는 일반 창처럼 서로 앞뒤 순서가 바뀝니다.
 - 이미 항상 위로 설정된 창은 다시 올리지 않습니다. 따라서 다른 프로그램의 항상 위 창이 나중에 나타나면 그 창이 Chrome 창보다 위에 놓일 수 있습니다.
 - Chrome을 관리자 권한으로 실행했다면, 이 프로그램도 관리자 권한으로 실행해야 Chrome 창을 변경할 수 있습니다.
+- 실행 파일에 코드 서명이 없습니다. 그래서 Windows Defender 같은 백신이 작은 실행 파일을 악성으로 잘못 판단할 수 있습니다. 브라우저에서 내려받은 파일이라면 차단되거나 격리될 수 있으며, 이 경우 파일을 직접 복사해서 쓰거나 백신 예외로 등록해야 합니다.
 
 ## 빌드
 
 다음 도구가 필요합니다.
 
-- [LLVM](https://github.com/llvm/llvm-project/releases) (`clang-cl`, `lld-link`)
-- Visual Studio 또는 Build Tools의 **C++를 사용한 데스크톱 개발** 워크로드 (MSVC 헤더와 Windows SDK)
+- Visual Studio 또는 Build Tools의 **C++를 사용한 데스크톱 개발** 워크로드 (MSVC 컴파일러와 Windows SDK)
 
-저장소 폴더에서 `build.cmd`를 실행하면 `bin\ChromeAlwaysOnTop.exe`가 만들어집니다. `clang-cl`이 `PATH`에 없으면 `%ProgramFiles%\LLVM\bin`에서 찾습니다.
+저장소 폴더에서 `build.cmd`를 실행하면 `bin\ChromeAlwaysOnTop.exe`가 만들어집니다. 스크립트가 `%ProgramFiles%`와 `%ProgramFiles(x86)%`에서 설치된 Visual Studio를 찾아 빌드 환경을 스스로 구성합니다.
 
-C 런타임을 링크하지 않고 진입점을 직접 지정해서 빌드하므로, 실행 파일은 Windows 기본 DLL 외에는 아무것도 참조하지 않습니다.
+표준 MSVC 컴파일러와 링커로 빌드하고 C 런타임을 실행 파일 안에 포함하므로, 재배포 패키지를 따로 설치할 필요가 없습니다. 버전 정보는 `src/app.rc`에 들어 있습니다.
 
 ## 라이선스
 

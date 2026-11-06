@@ -13,6 +13,7 @@
 #define COMMAND_CAPACITY 1536
 
 static const WCHAR ApplicationName[] = L"ChromeAlwaysOnTop";
+static const WCHAR WindowClassName[] = L"ChromeAlwaysOnTopHiddenWindow";
 
 typedef struct ScanState
 {
@@ -59,6 +60,12 @@ static BOOL CALLBACK PinChromeWindow(HWND window, LPARAM parameter)
     if (state->lastProcessIsChrome) SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
 
     return TRUE;
+}
+
+static void PinChromeWindows(void)
+{
+    ScanState state = { 0, FALSE };
+    EnumWindows(PinChromeWindow, (LPARAM)&state);
 }
 
 static const WCHAR* GetArguments(void)
@@ -113,31 +120,67 @@ static DWORD ReadInterval(const WCHAR* cursor)
     return interval;
 }
 
-__declspec(noreturn) void Start(void)
+static LRESULT CALLBACK MainWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    if (message == WM_TIMER)
+    {
+        PinChromeWindows();
+        return 0;
+    }
+    if (message == WM_CLOSE)
+    {
+        DestroyWindow(window);
+        return 0;
+    }
+    if (message == WM_DESTROY)
+    {
+        PostQuitMessage(0);
+        return 0;
+    }
+    return DefWindowProcW(window, message, wParam, lParam);
+}
+
+int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR commandLine, int show)
 {
     // Unprefixed names live in the session namespace, the same as a "Local\" prefix.
     HANDLE exitEvent = CreateEventW(NULL, FALSE, FALSE, ApplicationName);
+    WNDCLASSW windowClass = { 0 };
     const WCHAR* arguments;
     DWORD interval;
+    HWND window;
+    MSG message;
 
-    if (exitEvent == NULL) ExitProcess(1);
+    if (exitEvent == NULL) return 1;
 
     // The event already exists when another instance is running: signal it to stop and leave.
     if (GetLastError() == ERROR_ALREADY_EXISTS)
     {
         SetEvent(exitEvent);
-        ExitProcess(0);
+        CloseHandle(exitEvent);
+        return 0;
     }
 
     arguments = GetArguments();
     RegisterStartup(arguments);
     interval = ReadInterval(arguments);
-    do
-    {
-        ScanState state = { 0, FALSE };
-        EnumWindows(PinChromeWindow, (LPARAM)&state);
-    }
-    while (WaitForSingleObject(exitEvent, interval) == WAIT_TIMEOUT);
 
-    ExitProcess(0);
+    windowClass.lpfnWndProc = MainWindowProc;
+    windowClass.hInstance = instance;
+    windowClass.lpszClassName = WindowClassName;
+    if (!RegisterClassW(&windowClass)) return 1;
+
+    // The window is never shown; it only receives timer ticks and the close request.
+    window = CreateWindowExW(0, WindowClassName, ApplicationName, 0, 0, 0, 0, 0, NULL, NULL, instance, NULL);
+    if (window == NULL) return 1;
+
+    PinChromeWindows();
+    if (SetTimer(window, 1, interval, NULL) == 0) return 1;
+
+    while (GetMessageW(&message, NULL, 0, 0) > 0)
+    {
+        DispatchMessageW(&message);
+    }
+
+    CloseHandle(exitEvent);
+    return 0;
 }
